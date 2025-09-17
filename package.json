@@ -1,0 +1,37 @@
+{
+  "name": "changesets-digger",
+  "version": "0.1.0",
+  "description": "Git-native changelog generation from changeset history and git tags",
+  "bin": {
+    "changesets-digger": "./bin/changesets-digger",
+    "cdig": "./bin/changesets-digger"
+  },
+  "scripts": {
+    "format": "prettier --write \"**/*.{ts,js,mjs,md,json}\"",
+    "test:integration": "vitest run --config vitest.config.integration.mjs",
+    "test:unit": "vitest run --config vitest.config.mjs"
+  },
+  "keywords": [
+    "changelog",
+    "changesets",
+    "git",
+    "release-notes",
+    "versioning"
+  ],
+  "author": {
+    "name": "oberbeck",
+    "url": "https://github.com/oberbeck"
+  },
+  "dependencies": {
+    "commander": "^14.0.1",
+    "semver": "^7.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@types/semver": "^7.7.1",
+    "prettier": "3.6.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
