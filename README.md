@@ -151,7 +151,9 @@ This tool works well for applications where you want:
 
 ### How does this compare to @changesets/cli?
 
-Both tools share the changeset workflow philosophy. The main difference is that @changesets/cli modifies and commits version files during releases, while this tool generates changelogs from Git tags at build time. @changesets/cli may be better suited for libraries and SDKs with complex dependency management, while this tool focuses on applications with simpler versioning needs.
+This repository uses @changesets/cli to manage its own CLI versioning. Both Changesets Digger and @changesets/cli follow a similar changeset-based workflow, but they serve slightly different purposes. @changesets/cli updates and commits version files directly to your repository during the release process, which is especially helpful for libraries and SDKs where managing API versions is important.
+
+On the other hand, Changesets Digger is designed to generate user-facing changelogs from Git tags at build time, without adding extra version files to your repository. This makes it a good fit for end-user applications, like graphical interfaces, where you want to highlight changes for your users rather than focus on technical versioning files.
 
 ### How does this compare to semantic-release?
 

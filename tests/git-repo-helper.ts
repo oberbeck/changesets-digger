@@ -140,13 +140,14 @@ ${summary}
    * Execute our CLI command in the repo directory
    */
   execDiggerCommand(command: string): string {
-    const diggerPath = path.join(this.originalCwd, 'src/cli/index.ts');
-    const fullCommand = `npx ts-node "${diggerPath}" ${command}`;
+    const diggerPath = path.join(this.originalCwd, 'bin/changesets-digger');
+    const fullCommand = `node "${diggerPath}" ${command}`;
 
     return execSync(fullCommand, {
       cwd: this.repoPath,
       encoding: 'utf-8',
       stdio: 'pipe',
+      timeout: 30000,
       env: { ...process.env, NODE_PATH: this.originalCwd },
     }).toString();
   }

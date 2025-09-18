@@ -1,13 +1,18 @@
 {
   "name": "changesets-digger",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "Git-native changelog generation from changeset history and git tags",
   "bin": {
-    "changesets-digger": "./bin/changesets-digger",
-    "cdig": "./bin/changesets-digger"
+    "changesets-digger": "bin/changesets-digger",
+    "cdig": "bin/changesets-digger"
   },
   "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "prepublishOnly": "npm run build",
     "format": "prettier --write \"**/*.{ts,js,mjs,md,json}\"",
+    "test": "npm run test:unit && npm run test:integration",
     "test:integration": "vitest run --config vitest.config.integration.mjs",
     "test:unit": "vitest run --config vitest.config.mjs"
   },
@@ -26,11 +31,15 @@
     "commander": "^14.0.1",
     "semver": "^7.7.2"
   },
+  "files": [
+    "dist",
+    "bin",
+    "README.md"
+  ],
   "devDependencies": {
-    "@types/node": "^22.14.0",
+    "@changesets/cli": "^2.29.7",
     "@types/semver": "^7.7.1",
     "prettier": "3.6.2",
-    "ts-node": "^10.9.2",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   }

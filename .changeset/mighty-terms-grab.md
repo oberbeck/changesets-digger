@@ -1,0 +1,5 @@
+---
+'changesets-digger': patch
+---
+
+init
