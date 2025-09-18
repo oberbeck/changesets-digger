@@ -130,3 +130,41 @@ _Released on January 15, 2024_
 ```bash
 npx changesets-digger --help
 ```
+
+## FAQ
+
+### What is Changesets Digger?
+
+Changesets Digger is a changelog generation tool that builds on the changeset workflow concept. It generates user-facing changelogs at build time by reconstructing changeset history from Git tags, avoiding the need to commit version files back to your repository.
+
+### How does it work?
+
+The tool uses Git tags as the single source of truth for versioning. During your build process, it reads changeset files from your Git history and generates markdown changelog files along with a JSON index for programmatic access.
+
+### When should I use this tool?
+
+This tool works well for applications where you want:
+
+- Clean Git history without version-bump commits
+- Separation between technical commit messages and user-facing changelogs
+- Build-time changelog generation rather than committed files
+
+### How does this compare to @changesets/cli?
+
+Both tools share the changeset workflow philosophy. The main difference is that @changesets/cli modifies and commits version files during releases, while this tool generates changelogs from Git tags at build time. @changesets/cli may be better suited for libraries and SDKs with complex dependency management, while this tool focuses on applications with simpler versioning needs.
+
+### How does this compare to semantic-release?
+
+semantic-release analyzes commit messages to automatically determine versions and generate changelogs. This tool requires explicit changeset files but allows for more descriptive, user-focused release notes while keeping commit messages technical and atomic.
+
+### Do I need to change my existing workflow?
+
+The tool integrates into most CI/CD workflows with minimal changes. You'll add changeset creation during development and changelog generation during your build process. Your existing Git tagging and release processes can remain largely the same.
+
+### Can I customize the output format?
+
+The tool creates a separate markdown file for each version, along with a JSON index. You can choose where these files are saved and use them in your documentation or website as you like. At the moment, custom renderers aren’t supported yet, but this feature is planed in the future.
+
+### What happens to my changeset files?
+
+Changeset files remain in your Git history and are not deleted. This preserves the full context and reasoning behind each change for future reference.
