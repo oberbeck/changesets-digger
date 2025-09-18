@@ -13,7 +13,9 @@ history at each version tag.
 
 ## Installation
 
-TODO
+```bash
+npm install changesets-digger
+```
 
 ## Setup
 

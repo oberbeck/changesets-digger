@@ -27,6 +27,17 @@
     "name": "oberbeck",
     "url": "https://github.com/oberbeck"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oberbeck/changesets-digger.git"
+  },
+  "homepage": "https://github.com/oberbeck/changesets-digger",
+  "bugs": {
+    "url": "https://github.com/oberbeck/changesets-digger/issues"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
   "dependencies": {
     "commander": "^14.0.1",
     "semver": "^7.7.2"
