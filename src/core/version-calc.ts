@@ -5,12 +5,14 @@ import { Changeset, readChangesets } from './changeset-reader';
 import {
   getAllVersionTags,
   getChangesetsAtTag,
+  getCurrentCommitHash,
   getLatestTaggedVersion,
   getTagDate,
+  hasUncommittedChanges,
 } from './git-ops';
 
 /**
- * Calculate the next version from current changesets
+ * Calculate the upcoming version from current changesets
  */
 export async function getUpcomingVersion(
   options: { ignoreErrors?: boolean } = {},
@@ -54,17 +56,26 @@ export async function getUpcomingVersion(
       return null;
     }
 
-    // Calculate next version
-    const nextVersion = semver.inc(currentVersion, highestBumpLevel);
+    // Handle pre-release versions correctly
+    // For pre-release versions like "1.0.0-beta.1", we want to calculate
+    // the upcoming version based on the base version, not the pre-release
+    let versionToIncrement = currentVersion;
+    
+    if (semver.prerelease(currentVersion)) {
+      // Extract base version without pre-release tag
+      versionToIncrement = `${semver.major(currentVersion)}.${semver.minor(currentVersion)}.${semver.patch(currentVersion)}`;
+    }
+    
+    const upcomingVersion = semver.inc(versionToIncrement, highestBumpLevel);
 
-    if (!nextVersion) {
+    if (!upcomingVersion) {
       throw new Error(
-        `Could not calculate next version from ${currentVersion} with bump ${highestBumpLevel}`,
+        `Could not calculate upcoming version from ${currentVersion} (using base: ${versionToIncrement}) with bump ${highestBumpLevel}`,
       );
     }
 
     return {
-      version: nextVersion,
+      version: upcomingVersion,
       date: new Date().toISOString(),
       changes: newChangesets.map((cs) => ({
         type: categorizeChange(cs.summary),
@@ -77,6 +88,21 @@ export async function getUpcomingVersion(
     return null;
   }
 }
+
+export const getPreviewVersionFrom = (version: string): string => {
+  // Calculate upcoming version with commit hash for all cases
+  // Get the base version (strip any existing prerelease) 
+  const baseVersion = semver.major(version) + '.' +
+    semver.minor(version) + '.' +
+    semver.patch(version);
+
+  // Get short git commit hash for prerelease identifier
+  const commitHash = getCurrentCommitHash();
+  const isDirty = hasUncommittedChanges();
+  const prereleaseId = isDirty ? `${commitHash}-dirty` : commitHash;
+
+  return `${baseVersion}-dev.${prereleaseId}`;
+};
 
 /**
  * Get changelog entry for a specific historical version
@@ -163,9 +189,40 @@ function categorizeChange(summary: string): ChangeEntry['type'] {
 }
 
 /**
- * Calculate what the next version would be without creating it
+ * Version status interface
  */
-export async function calculateNextVersion(): Promise<string | null> {
+export interface VersionStatus {
+  current: string;
+  upcoming: string | null;
+  hasChanges: boolean;
+  changeCount: number;
+}
+
+/**
+ * Get comprehensive version status information
+ */
+export async function getVersionStatus(
+  options: { ignoreErrors?: boolean } = {},
+): Promise<VersionStatus> {
+  const current = getCurrentVersion();
+  const upcomingVersion = await getUpcomingVersion(options);
+
+  const hasChanges = upcomingVersion !== null;
+  const upcoming = upcomingVersion?.version || null;
+  const changeCount = upcomingVersion?.changes.length || 0;
+
+  return {
+    current,
+    upcoming,
+    hasChanges,
+    changeCount,
+  };
+}
+
+/**
+ * Calculate what the upcoming version would be without creating it
+ */
+export async function calculateUpcomingVersion(): Promise<string | null> {
   const upcomingVersion = await getUpcomingVersion();
   return upcomingVersion?.version || null;
 }
@@ -173,7 +230,7 @@ export async function calculateNextVersion(): Promise<string | null> {
 /**
  * Get current version from git tags or package.json
  */
-function getCurrentVersion(): string {
+export function getCurrentVersion(): string {
   // Try git tags first (most reliable for our use case)
   const latestTag = getLatestTaggedVersion();
   if (latestTag && latestTag !== '0.0.0') {

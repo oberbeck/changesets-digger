@@ -207,3 +207,15 @@ export function hasUncommittedChanges(): boolean {
     return false;
   }
 }
+
+/**
+ * Get the current git commit hash (short version)
+ */
+export function getCurrentCommitHash(): string {
+  try {
+    return execSync('git rev-parse --short HEAD').toString().trim();
+  } catch (error) {
+    console.warn('Could not get git commit hash:', error);
+    return 'unknown';
+  }
+}

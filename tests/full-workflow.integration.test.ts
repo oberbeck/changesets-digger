@@ -323,4 +323,240 @@ describe('Changesets Digger - Full Workflow Integration', () => {
       }),
     );
   });
+
+  describe('Version Command', () => {
+    it(
+      'should output current version with --output current',
+      withRepo(async (repo) => {
+        // Create a base version
+        repo.createTag('v1.2.3', 'Base version');
+
+        const output = repo.execDiggerCommand('version --output current');
+        expect(output.trim()).toBe('1.2.3');
+      }),
+    );
+
+    it(
+      'should output upcoming version with --output upcoming when changes exist',
+      withRepo(async (repo) => {
+        repo.createTag('v1.0.0', 'Base version');
+
+        // Add a minor change
+        repo.createChangeset('feat-1', 'minor', 'Add new feature');
+        repo.makeChangesAndCommit({}, 'Add changeset');
+
+        const output = repo.execDiggerCommand('version --output upcoming');
+        expect(output.trim()).toBe('1.1.0');
+      }),
+    );
+
+    it(
+      'should output "null" when no changes exist with --output upcoming',
+      withRepo(async (repo) => {
+        repo.createTag('v1.0.0', 'Base version');
+
+        const output = repo.execDiggerCommand('version --output upcoming');
+        expect(output.trim()).toBe('null');
+      }),
+    );
+
+    it(
+      'should output hasChanges status correctly',
+      withRepo(async (repo) => {
+        repo.createTag('v1.0.0', 'Base version');
+
+        // No changes initially
+        let output = repo.execDiggerCommand('version --output hasChanges');
+        expect(output.trim()).toBe('false');
+
+        // Add changes
+        repo.createChangeset('fix-1', 'patch', 'Fix bug');
+        repo.makeChangesAndCommit({}, 'Add changeset');
+
+        output = repo.execDiggerCommand('version --output hasChanges');
+        expect(output.trim()).toBe('true');
+
+        // Tag the changeset to reset the hasChanges status
+        repo.createTag('v1.0.1', 'Release v1.0.1');
+        output = repo.execDiggerCommand('version --output hasChanges');
+        expect(output.trim()).toBe('false');
+      }),
+    );
+
+    it(
+      'should output correct changeCount',
+      withRepo(async (repo) => {
+        repo.createTag('v1.0.0', 'Base version');
+
+        // Initially no changes
+        let output = repo.execDiggerCommand('version --output changeCount');
+        expect(output.trim()).toBe('0');
+
+        // Add multiple changesets
+        repo.createChangeset('fix-1', 'patch', 'Fix bug 1');
+        repo.createChangeset('feat-1', 'minor', 'Add feature 1');
+        repo.createChangeset('fix-2', 'patch', 'Fix bug 2');
+        repo.makeChangesAndCommit({}, 'Add changesets');
+
+        output = repo.execDiggerCommand('version --output changeCount');
+        expect(output.trim()).toBe('3');
+
+        // Tag the changeset to reset the changeCount status
+        repo.createTag('v1.0.1', 'Release v1.0.1');
+        output = repo.execDiggerCommand('version --output changeCount');
+        expect(output.trim()).toBe('0');
+      }),
+    );
+
+    it(
+      'should output status format correctly',
+      withRepo(async (repo) => {
+        repo.createTag('v1.0.0', 'Base version');
+
+        repo.createChangeset('feat-1', 'minor', 'Add feature');
+        repo.makeChangesAndCommit({}, 'Add changeset');
+
+        const output = repo.execDiggerCommand('version --output status');
+
+        // Parse the key=value format
+        const statusPairs = output.trim().split(' ');
+        const statusMap = statusPairs.reduce((acc, pair) => {
+          const [key, value] = pair.split('=');
+          acc[key] = value;
+          return acc;
+        }, {} as Record<string, string>);
+
+        expect(statusMap.current).toBe('1.0.0');
+        expect(statusMap.upcoming).toBe('1.1.0');
+        expect(statusMap.hasChanges).toBe('true');
+        expect(statusMap.changeCount).toBe('1');
+      }),
+    );
+
+    it(
+      'should output JSON format correctly (default)',
+      withRepo(async (repo) => {
+        repo.createTag('v2.1.0', 'Base version');
+
+        repo.createChangeset('major-1', 'major', 'Breaking change');
+        repo.createChangeset('fix-1', 'patch', 'Fix issue');
+        repo.makeChangesAndCommit({}, 'Add changesets');
+
+        const output = repo.execDiggerCommand('version --output json');
+        const jsonData = JSON.parse(output);
+
+        expect(jsonData).toEqual({
+          current: '2.1.0',
+          upcoming: '3.0.0', // Major bump from 2.1.0
+          hasChanges: true,
+          changeCount: 2,
+        });
+      }),
+    );
+
+    it(
+      'should use json as default output format',
+      withRepo(async (repo) => {
+        repo.createTag('v1.0.0', 'Base version');
+
+        // Test that default behavior is JSON output (since we set 'json' as default)
+        const output = repo.execDiggerCommand('version');
+        const jsonData = JSON.parse(output);
+
+        expect(jsonData).toHaveProperty('current');
+        expect(jsonData).toHaveProperty('upcoming');
+        expect(jsonData).toHaveProperty('hasChanges');
+        expect(jsonData).toHaveProperty('changeCount');
+      }),
+    );
+
+    it(
+      'should handle version calculation with mixed change types',
+      withRepo(async (repo) => {
+        repo.createTag('v1.5.2', 'Base version');
+
+        // Add mixed changes - major should take precedence
+        repo.createChangeset('patch-1', 'patch', 'Fix small bug');
+        repo.createChangeset('minor-1', 'minor', 'Add feature');
+        repo.createChangeset('major-1', 'major', 'Breaking change');
+        repo.makeChangesAndCommit({}, 'Add mixed changesets');
+
+        const output = repo.execDiggerCommand('version --output upcoming');
+        expect(output.trim()).toBe('2.0.0'); // Major bump resets minor/patch
+      }),
+    );
+
+    it(
+      'should handle repository with no tags (starting from 0.0.0)',
+      withRepo(async (repo) => {
+        // Don't create any tags - should start from 0.0.0
+
+        // Add a changeset
+        repo.createChangeset('feat-1', 'minor', 'Initial feature');
+        repo.makeChangesAndCommit({}, 'Add initial changeset');
+
+        const currentOutput = repo.execDiggerCommand('version --output current');
+        expect(currentOutput.trim()).toBe('0.0.0');
+
+        const upcomingOutput = repo.execDiggerCommand('version --output upcoming');
+        expect(upcomingOutput.trim()).toBe('0.1.0');
+      }),
+    );
+
+    it(
+      'should reject invalid output format',
+      withRepo(async (repo) => {
+        expect(() => {
+          repo.execDiggerCommand('version --output invalid');
+        }).toThrow();
+
+        expect(() => {
+          repo.execDiggerCommand('version --output');
+        }).toThrow();
+      }),
+    );
+
+    it(
+      'should handle complex version scenarios',
+      withRepo(async (repo) => {
+        // Create a history of versions
+        repo.createTag('v0.1.0', 'Initial release');
+
+        repo.createChangeset('major-1', 'major', 'Breaking change');
+        repo.makeChangesAndCommit({}, 'Add major change');
+        repo.createTag('v1.0.0', 'Major release');
+
+        repo.createChangeset('minor-1', 'minor', 'New feature');
+        repo.createChangeset('patch-1', 'patch', 'Bug fix');
+        repo.makeChangesAndCommit({}, 'Add more changes');
+
+        // Verify version calculation from latest tag
+        const jsonOutput = repo.execDiggerCommand('version --output json');
+        const data = JSON.parse(jsonOutput);
+
+        expect(data.current).toBe('1.0.0');
+        expect(data.upcoming).toBe('1.1.0'); // Minor takes precedence over patch
+        expect(data.hasChanges).toBe(true);
+        expect(data.changeCount).toBe(2);
+      }),
+    );
+
+    it(
+      'should handle pre-release versions correctly',
+      withRepo(async (repo) => {
+        // Create a pre-release tag
+        repo.createTag('v1.0.0-beta.1', 'Beta release');
+
+        repo.createChangeset('fix-1', 'patch', 'Fix beta issue');
+        repo.makeChangesAndCommit({}, 'Add beta fix');
+
+        const currentOutput = repo.execDiggerCommand('version --output current');
+        expect(currentOutput.trim()).toBe('1.0.0-beta.1');
+
+        // Upcoming version should bump the main versioning
+        const upcomingOutput = repo.execDiggerCommand('version --output upcoming');
+        expect(upcomingOutput.trim()).toBe('1.0.1');
+      }),
+    );
+  });
 });

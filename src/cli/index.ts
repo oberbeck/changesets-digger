@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { addCommand } from './add';
 import { generateCommand } from './generate';
 import { tagCommand } from './tag';
+import { versionCommand } from './version';
 
 const program = new Command();
 
@@ -16,6 +17,7 @@ program
 program.addCommand(addCommand);
 program.addCommand(generateCommand);
 program.addCommand(tagCommand);
+program.addCommand(versionCommand);
 
 // Default behavior - show help
 if (process.argv.length <= 2) {
