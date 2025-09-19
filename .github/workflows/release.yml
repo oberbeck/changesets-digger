@@ -1,113 +1,58 @@
 name: Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      release_type:
-        description: 'Release type (will be determined by changesets)'
-        required: false
-        default: 'auto'
-        type: choice
-        options:
-        - auto
-        - force
+  push:
+    branches:
+      - main
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   release:
-    name: Release to NPM
+    name: Release
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # Allows pushing commits and creating releases
-      id-token: write  # For NPM provenance
-      actions: read    # Standard permission
-    
+      contents: write # Allows creating releases and pushing commits
+      pull-requests: write # Allows creating and updating pull requests
+      id-token: write # For NPM provenance
+      actions: read # Standard permission
+
     steps:
-      - name: Checkout
+      - name: Checkout Repo
         uses: actions/checkout@v4
         with:
           # Need full history for changeset version calculation
           fetch-depth: 0
-          # Use token that can push to protected branches
-          token: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22.19.0'
           cache: 'npm'
-          registry-url: 'https://registry.npmjs.org'
-          
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-      - name: Install dependencies
+
+      - name: Install Dependencies
         run: npm ci
-        
+
       - name: Build project
         run: npm run build
-        
+
       - name: Run tests
         run: npm run test
-        
-      - name: Check if there are any changesets
+
+      - name: Create Release Pull Request or Publish to npm
         id: changesets
-        run: |
-          if [ -n "$(find .changeset -name '*.md' -not -name 'README.md' 2>/dev/null)" ]; then
-            echo "has_changesets=true" >> $GITHUB_OUTPUT
-            echo "Found changesets to process"
-          else
-            echo "has_changesets=false" >> $GITHUB_OUTPUT
-            echo "No changesets found"
-          fi
-          
-      - name: No changesets found
-        if: steps.changesets.outputs.has_changesets == 'false' && inputs.release_type != 'force'
-        run: |
-          echo "❌ No changesets found. Please add changesets before releasing."
-          echo "Run: npx changeset add"
-          echo "Or use 'force' option to release anyway."
-          exit 1
-          
-      - name: Version packages with changesets
-        if: steps.changesets.outputs.has_changesets == 'true' || inputs.release_type == 'force'
-        run: |
-          npx changeset version
-          git add .
-          git commit -m "chore: version packages"
-          
-      - name: Publish to NPM
-        if: steps.changesets.outputs.has_changesets == 'true' || inputs.release_type == 'force'
-        id: publish
-        run: |
-          # Publish packages with provenance
-          npx changeset publish --registry https://registry.npmjs.org
-          
-          # Store published package info for later use
-          PACKAGE_NAME=$(node -p "require('./package.json').name")
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
-          echo "published=true" >> $GITHUB_OUTPUT
-          echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
-          echo "package_version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+        uses: changesets/action@v1
+        with:
+          # Calling release which does a build for the package and calls changeset publish
+          publish: npm run release
+          title: 'Version Packages'
+          commit: 'chore: version packages'
+          createGithubReleases: true
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          
-      - name: Push version changes and tags
-        if: steps.publish.outputs.published == 'true'
-        run: |
-          # Push both commits and tags to remote repository
-          git push --follow-tags
-          
-      - name: Create GitHub Release
-        if: steps.publish.outputs.published == 'true'
-        run: |
-          VERSION="${{ steps.publish.outputs.package_version }}"
-          
-          # Create GitHub release
-          gh release create "v$VERSION" \
-            --title "Release v$VERSION" \
-            --generate-notes \
-            --latest
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # - name: Send a notification if a publish happens
+      #   if: steps.changesets.outputs.published == 'true'
+      #   # Do something when a publish happens.
+      #   run: echo "A new version of ${{ github.repository }} was published!"

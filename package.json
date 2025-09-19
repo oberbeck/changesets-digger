@@ -14,7 +14,8 @@
     "format": "prettier --write \"**/*.{ts,js,mjs,md,json}\"",
     "test": "npm run test:unit && npm run test:integration",
     "test:integration": "vitest run --config vitest.config.integration.mjs",
-    "test:unit": "vitest run --config vitest.config.mjs"
+    "test:unit": "vitest run --config vitest.config.mjs",
+    "release": "npm run build && changeset publish"
   },
   "keywords": [
     "changelog",
